@@ -10,7 +10,7 @@ const upload = require("../../middleware/uploadMiddleware");
 const router = express.Router();
 
 // Dashboard
-router.get("/dashboard", authMiddleware(["NGO"]), async (req, res) => {
+router.get("/dashboard", authMiddleware(["ngo"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const ngo = await NGO.findOne({ userId });
@@ -40,7 +40,7 @@ router.get("/dashboard", authMiddleware(["NGO"]), async (req, res) => {
 });
 
 // Profile management
-router.get("/profile", authMiddleware(["NGO"]), async (req, res) => {
+router.get("/profile", authMiddleware(["ngo"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const ngo = await NGO.findOne({ userId });
@@ -55,7 +55,7 @@ router.get("/profile", authMiddleware(["NGO"]), async (req, res) => {
     }
 });
 
-router.put("/profile", authMiddleware(["NGO"]), upload.single("logo"), async (req, res) => {
+router.put("/profile", authMiddleware(["ngo"]), upload.single("logo"), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const updateData = req.body;
@@ -77,7 +77,7 @@ router.put("/profile", authMiddleware(["NGO"]), upload.single("logo"), async (re
 });
 
 // Campaign management
-router.post("/campaigns", authMiddleware(["NGO"]), upload.fields([
+router.post("/campaigns", authMiddleware(["ngo"]), upload.fields([
     { name: "campaignImage", maxCount: 1 },
     { name: "documents", maxCount: 5 }
 ]), async (req, res) => {
@@ -112,7 +112,7 @@ router.post("/campaigns", authMiddleware(["NGO"]), upload.fields([
     }
 });
 
-router.get("/campaigns", authMiddleware(["NGO"]), async (req, res) => {
+router.get("/campaigns", authMiddleware(["ngo"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const ngo = await NGO.findOne({ userId });
@@ -128,7 +128,7 @@ router.get("/campaigns", authMiddleware(["NGO"]), async (req, res) => {
     }
 });
 
-router.put("/campaigns/:id", authMiddleware(["NGO"]), async (req, res) => {
+router.put("/campaigns/:id", authMiddleware(["ngo"]), async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.user._id || req.user.id;
@@ -150,7 +150,7 @@ router.put("/campaigns/:id", authMiddleware(["NGO"]), async (req, res) => {
 });
 
 // View companies
-router.get("/companies", authMiddleware(["NGO"]), async (req, res) => {
+router.get("/companies", authMiddleware(["ngo"]), async (req, res) => {
     try {
         const companies = await Company.find({ isActive: true }).populate("userId", "fullName email");
         res.json(companies);
@@ -159,7 +159,7 @@ router.get("/companies", authMiddleware(["NGO"]), async (req, res) => {
     }
 });
 
-router.get("/companies/:id", authMiddleware(["NGO"]), async (req, res) => {
+router.get("/companies/:id", authMiddleware(["ngo"]), async (req, res) => {
     try {
         const { id } = req.params;
         const company = await Company.findById(id).populate("userId", "fullName email");
@@ -175,7 +175,7 @@ router.get("/companies/:id", authMiddleware(["NGO"]), async (req, res) => {
 });
 
 // Donations received
-router.get("/donations", authMiddleware(["NGO"]), async (req, res) => {
+router.get("/donations", authMiddleware(["ngo"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const ngo = await NGO.findOne({ userId });

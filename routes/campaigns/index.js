@@ -63,7 +63,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // Create campaign (NGO only)
-router.post("/", authMiddleware(["NGO"]), upload.fields([
+router.post("/", authMiddleware(["ngo"]), upload.fields([
     { name: "campaignImage", maxCount: 1 },
     { name: "documents", maxCount: 5 }
 ]), async (req, res) => {
@@ -99,7 +99,7 @@ router.post("/", authMiddleware(["NGO"]), upload.fields([
 });
 
 // Update campaign
-router.put("/:id", authMiddleware(["NGO", "Admin"]), async (req, res) => {
+router.put("/:id", authMiddleware(["ngo", "admin"]), async (req, res) => {
     try {
         const { id } = req.params;
         const { role } = req.user;
@@ -108,7 +108,7 @@ router.put("/:id", authMiddleware(["NGO", "Admin"]), async (req, res) => {
         let query = { _id: id };
 
         // If not admin, only allow NGO to update their own campaigns
-        if (role !== "Admin") {
+        if (role !== "admin") {
             query.createdBy = userId;
         }
 
@@ -125,7 +125,7 @@ router.put("/:id", authMiddleware(["NGO", "Admin"]), async (req, res) => {
 });
 
 // Delete campaign
-router.delete("/:id", authMiddleware(["NGO", "Admin"]), async (req, res) => {
+router.delete("/:id", authMiddleware(["ngo", "admin"]), async (req, res) => {
     try {
         const { id } = req.params;
         const { role } = req.user;
@@ -134,7 +134,7 @@ router.delete("/:id", authMiddleware(["NGO", "Admin"]), async (req, res) => {
         let query = { _id: id };
 
         // If not admin, only allow NGO to delete their own campaigns
-        if (role !== "Admin") {
+        if (role !== "admin") {
             query.createdBy = userId;
         }
 

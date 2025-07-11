@@ -252,7 +252,7 @@ class AuthController {
     // Create NGO profile
     static async createNGOProfile(user, userData) {
         try {
-            const newNGO = await NGO.create({
+            const newNGO = await ngo.create({
                 userId: user._id,
                 ngoName: userData.fullName,
                 email: userData.email,
@@ -269,7 +269,7 @@ class AuthController {
     // Create Company profile
     static async createCompanyProfile(user, userData) {
         try {
-            const newCompany = await Company.create({
+            const newCompany = await company.create({
                 userId: user._id,
                 companyName: userData.fullName,
                 companyEmail: userData.email,
@@ -426,7 +426,7 @@ const setupAdmin = async (req, res) => {
             email: 'acadify.online@gmail.com',
             password: hashedPassword,
             phoneNumber: '123-456-7890',
-            role: 'Admin',
+            role: 'admin',
             isVerified: true,
             isActive: true,
             approvalStatus: "approved"

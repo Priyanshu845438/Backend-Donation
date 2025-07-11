@@ -1,4 +1,3 @@
-
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -14,24 +13,54 @@ const nodemailer = require("nodemailer");
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "Donation_Priyanshu";
 
-// Setup admin
+// Setup default admin (only if no admin exists)
 router.post("/setup-admin", async (req, res) => {
     try {
-        await User.deleteOne({ email: "acadify.online@gmail.com" });
+        // Check if admin already exists
+        const existingAdmin = await User.findOne({ role: "admin" });
+
+        if (existingAdmin) {
+            return res.status(400).json({
+                status: "fail",
+                message: "Admin already exists"
+            });
+        }
+
+        // Create default admin
         const hashedPassword = await bcrypt.hash("Acadify@123", 10);
-        
-        const admin = new User({
-            fullName: "Acadify",
-            email: "acadify.online@gmail.com",
-            phoneNumber: "6206698170",
+
+        const adminUser = new User({
+            email: "admin@acadify.com",
             password: hashedPassword,
             role: "admin",
+            firstName: "System",
+            fullName: "Admin",
+            phoneNumber: "1234567890",
+            isApproved: true,
+            isActive: true
         });
 
-        await admin.save();
-        res.status(201).json({ message: "Default admin created successfully" });
+        await adminUser.save();
+
+        res.status(201).json({
+            status: "success",
+            message: "Default admin created successfully",
+            data: {
+                user: {
+                    id: adminUser._id,
+                    email: adminUser.email,
+                    role: adminUser.role
+                }
+            }
+        });
+
     } catch (error) {
-        res.status(500).json({ message: "Error setting up admin", error: error.message });
+        console.error("Setup admin error:", error);
+        res.status(500).json({
+            status: "error",
+            message: "Error setting up admin",
+            error: error.message
+        });
     }
 });
 
@@ -117,7 +146,7 @@ router.post("/login", async (req, res) => {
         if (role) {
             query.role = role;
         }
-        
+
         const user = await User.findOne(query);
         if (!user) {
             const message = role 
@@ -151,9 +180,9 @@ router.get("/profile", authMiddleware([]), async (req, res) => {
         const { role } = req.user;
         const userId = req.user._id || req.user.id;
         let model;
-        
-        if (role === "NGO") model = NGO;
-        else if (role === "Company") model = Company;
+
+        if (role === "ngo") model = NGO;
+        else if (role === "company") model = Company;
         else return res.status(403).json({ message: "You are not authorized to access this profile." });
 
         let entity = await model.findOne({ userId });
@@ -175,8 +204,8 @@ router.put("/profile", authMiddleware([]), upload.single("profileImage"), async 
         let updateData = req.body;
 
         let model;
-        if (role === "NGO") model = NGO;
-        else if (role === "Company") model = Company;
+        if (role === "ngo") model = NGO;
+        else if (role === "company") model = Company;
         else return res.status(403).json({ message: "You are not authorized to update this profile." });
 
         let entity = await model.findOne({ userId });

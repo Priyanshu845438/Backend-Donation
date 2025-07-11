@@ -24,12 +24,15 @@ const authMiddleware = (allowedRoles = []) => {
 
             // Check role permissions
             if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+                console.log(`Permission denied - Required: ${allowedRoles}, User has: ${user.role}`);
                 return res.status(403).json({ 
                     message: "Access denied. Insufficient permissions.",
                     requiredRoles: allowedRoles,
                     userRole: user.role
                 });
             }
+
+            console.log(`Access granted - User: ${user.email}, Role: ${user.role}`);
 
             req.user = user;
             next();

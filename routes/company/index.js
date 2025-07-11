@@ -10,7 +10,7 @@ const upload = require("../../middleware/uploadMiddleware");
 const router = express.Router();
 
 // Dashboard
-router.get("/dashboard", authMiddleware(["Company"]), async (req, res) => {
+router.get("/dashboard", authMiddleware(["company"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const company = await Company.findOne({ userId });
@@ -34,7 +34,7 @@ router.get("/dashboard", authMiddleware(["Company"]), async (req, res) => {
 });
 
 // Profile management
-router.get("/profile", authMiddleware(["Company"]), async (req, res) => {
+router.get("/profile", authMiddleware(["company"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const company = await Company.findOne({ userId });
@@ -49,7 +49,7 @@ router.get("/profile", authMiddleware(["Company"]), async (req, res) => {
     }
 });
 
-router.put("/profile", authMiddleware(["Company"]), upload.single("companyLogo"), async (req, res) => {
+router.put("/profile", authMiddleware(["company"]), upload.single("companyLogo"), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const updateData = req.body;
@@ -71,7 +71,7 @@ router.put("/profile", authMiddleware(["Company"]), upload.single("companyLogo")
 });
 
 // View NGOs
-router.get("/ngos", authMiddleware(["Company"]), async (req, res) => {
+router.get("/ngos", authMiddleware(["company"]), async (req, res) => {
     try {
         const ngos = await NGO.find({ isActive: true }).populate("userId", "fullName email");
         res.json(ngos);
@@ -80,7 +80,7 @@ router.get("/ngos", authMiddleware(["Company"]), async (req, res) => {
     }
 });
 
-router.get("/ngos/:id", authMiddleware(["Company"]), async (req, res) => {
+router.get("/ngos/:id", authMiddleware(["company"]), async (req, res) => {
     try {
         const { id } = req.params;
         const ngo = await NGO.findById(id).populate("userId", "fullName email");
@@ -99,7 +99,7 @@ router.get("/ngos/:id", authMiddleware(["Company"]), async (req, res) => {
 });
 
 // View campaigns
-router.get("/campaigns", authMiddleware(["Company"]), async (req, res) => {
+router.get("/campaigns", authMiddleware(["company"]), async (req, res) => {
     try {
         const campaigns = await Campaign.find({ isActive: true })
             .populate("ngoId", "ngoName email")
@@ -110,7 +110,7 @@ router.get("/campaigns", authMiddleware(["Company"]), async (req, res) => {
     }
 });
 
-router.get("/campaigns/:id", authMiddleware(["Company"]), async (req, res) => {
+router.get("/campaigns/:id", authMiddleware(["company"]), async (req, res) => {
     try {
         const { id } = req.params;
         const campaign = await Campaign.findById(id).populate("ngoId", "ngoName email");
@@ -126,7 +126,7 @@ router.get("/campaigns/:id", authMiddleware(["Company"]), async (req, res) => {
 });
 
 // Make donations
-router.post("/donations", authMiddleware(["Company"]), async (req, res) => {
+router.post("/donations", authMiddleware(["company"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const { ngoId, campaignId, amount, message } = req.body;
@@ -153,7 +153,7 @@ router.post("/donations", authMiddleware(["Company"]), async (req, res) => {
 });
 
 // View donations made
-router.get("/donations", authMiddleware(["Company"]), async (req, res) => {
+router.get("/donations", authMiddleware(["company"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const { page = 1, limit = 10 } = req.query;
@@ -191,7 +191,7 @@ router.get("/donations", authMiddleware(["Company"]), async (req, res) => {
 });
 
 // Make donation endpoint (as referenced in tests)
-router.post("/donate", authMiddleware(["Company"]), async (req, res) => {
+router.post("/donate", authMiddleware(["company"]), async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
         const { campaignId, amount, donationType, isAnonymous, message, paymentMethod } = req.body;

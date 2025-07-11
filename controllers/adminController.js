@@ -187,7 +187,7 @@ class AdminController {
                 email,
                 password: hashedPassword,
                 phoneNumber,
-                role: role.toLowerCase(),
+                role: role.charAt(0).toUpperCase() + role.slice(1).toLowerCase(),
                 isVerified: true,
                 isActive: true,
                 approvalStatus: "approved"
@@ -196,7 +196,8 @@ class AdminController {
             await newUser.save();
 
             // Create role-specific profile
-            if (role.toLowerCase() === "ngo") {
+            const normalizedRole = role.toLowerCase();
+            if (normalizedRole === "ngo") {
                 await NGO.create({
                     userId: newUser._id,
                     ngoName: fullName,
@@ -204,7 +205,7 @@ class AdminController {
                     contactNumber: phoneNumber,
                     isActive: true
                 });
-            } else if (role.toLowerCase() === "company") {
+            } else if (normalizedRole === "company") {
                 await Company.create({
                     userId: newUser._id,
                     companyName: fullName,

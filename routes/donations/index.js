@@ -9,7 +9,7 @@ const authMiddleware = require("../../middleware/auth");
 const router = express.Router();
 
 // Make a donation (Company/Donor only)
-router.post("/", authMiddleware(["Company", "Donor"]), async (req, res) => {
+router.post("/", authMiddleware(["company", "donor"]), async (req, res) => {
     try {
         const { role } = req.user;
         const userId = req.user._id || req.user.id;
@@ -17,18 +17,18 @@ router.post("/", authMiddleware(["Company", "Donor"]), async (req, res) => {
 
         let donorProfile = null;
         
-        if (role === "Company") {
+        if (role === "company") {
             donorProfile = await Company.findOne({ userId });
         }
         // Add Donor model handling when implemented
 
-        if (!donorProfile && role === "Company") {
+        if (!donorProfile && role === "company") {
             return res.status(404).json({ message: "Profile not found" });
         }
 
         const donation = new Donation({
-            companyId: role === "Company" ? donorProfile._id : null,
-            donorId: role === "Donor" ? userId : null,
+            companyId: role === "company" ? donorProfile._id : null,
+            donorId: role === "donor" ? userId : null,
             ngoId,
             campaignId,
             amount,
@@ -59,17 +59,17 @@ router.get("/", authMiddleware([]), async (req, res) => {
         const userId = req.user._id || req.user.id;
         let query = {};
 
-        if (role === "Company") {
+        if (role === "company") {
             const company = await Company.findOne({ userId });
             if (company) {
                 query.companyId = company._id;
             }
-        } else if (role === "NGO") {
+        } else if (role === "ngo") {
             const ngo = await NGO.findOne({ userId });
             if (ngo) {
                 query.ngoId = ngo._id;
             }
-        } else if (role === "Admin") {
+        } else if (role === "admin") {
             // Admin can see all donations
         } else {
             query.donorId = userId;
@@ -106,15 +106,15 @@ router.get("/:id", authMiddleware([]), async (req, res) => {
         // Check authorization
         let authorized = false;
         
-        if (role === "Admin") {
+        if (role === "admin") {
             authorized = true;
-        } else if (role === "Company") {
+        } else if (role === "company") {
             const company = await Company.findOne({ userId });
             authorized = company && donation.companyId?.toString() === company._id.toString();
-        } else if (role === "NGO") {
+        } else if (role === "ngo") {
             const ngo = await NGO.findOne({ userId });
             authorized = ngo && donation.ngoId?.toString() === ngo._id.toString();
-        } else if (role === "Donor") {
+        } else if (role === "donor") {
             authorized = donation.donorId?.toString() === userId;
         }
 
@@ -129,7 +129,7 @@ router.get("/:id", authMiddleware([]), async (req, res) => {
 });
 
 // Update donation status (Admin only)
-router.put("/:id/status", authMiddleware(["Admin"]), async (req, res) => {
+router.put("/:id/status", authMiddleware(["admin"]), async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
