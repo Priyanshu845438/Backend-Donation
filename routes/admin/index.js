@@ -1,0 +1,615 @@
+
+const express = require("express");
+const User = require("../../models/User");
+const NGO = require("../../models/NGO");
+const Company = require("../../models/Company");
+const Campaign = require("../../models/Campaign");
+const Notice = require("../../models/Notice");
+const Settings = require("../../models/Settings");
+const Activity = require("../../models/Activity");
+const authMiddleware = require("../../middleware/auth");
+const bcrypt = require("bcryptjs");
+
+const router = express.Router();
+
+// Dashboard analytics
+router.get("/dashboard", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalNGOs = await NGO.countDocuments();
+        const totalCompanies = await Company.countDocuments();
+        const totalCampaigns = await Campaign.countDocuments();
+
+        res.json({
+            analytics: {
+                totalUsers,
+                totalNGOs,
+                totalCompanies,
+                totalCampaigns
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching dashboard data", error: error.message });
+    }
+});
+
+// Dashboard stats endpoint
+router.get("/dashboard/stats", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalNGOs = await NGO.countDocuments();
+        const totalCompanies = await Company.countDocuments();
+        const totalCampaigns = await Campaign.countDocuments();
+        const activeCampaigns = await Campaign.countDocuments({ isActive: true });
+        const pendingApprovals = await User.countDocuments({ approvalStatus: "Pending" });
+
+        // Get donation statistics
+        const donationStats = await Campaign.aggregate([
+            { $group: { _id: null, totalRaised: { $sum: "$raisedAmount" } } }
+        ]);
+
+        const recentUsers = await User.find()
+            .select("fullName email role createdAt")
+            .sort({ createdAt: -1 })
+            .limit(5);
+
+        res.json({
+            success: true,
+            data: {
+                overview: {
+                    totalUsers,
+                    totalNGOs,
+                    totalCompanies,
+                    totalCampaigns,
+                    activeCampaigns,
+                    pendingApprovals,
+                    totalRaised: donationStats[0]?.totalRaised || 0
+                },
+                recentUsers,
+                systemHealth: {
+                    status: "healthy",
+                    uptime: process.uptime(),
+                    memory: process.memoryUsage()
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching dashboard stats", error: error.message });
+    }
+});
+
+// Create user endpoint
+router.post("/create-user", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { fullName, email, password, phoneNumber, role } = req.body;
+
+        if (!fullName || !email || !password || !phoneNumber || !role) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "User with this email already exists" });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({
+            fullName, email, phoneNumber, password: hashedPassword, role,
+            isVerified: true, isActive: true, approvalStatus: "Approved"
+        });
+
+        await newUser.save();
+
+        // Create profile based on role
+        if (role === "NGO") {
+            await NGO.create({
+                userId: newUser._id,
+                ngoName: fullName,
+                email: email,
+                contactNumber: phoneNumber
+            });
+        } else if (role === "Company") {
+            await Company.create({
+                userId: newUser._id,
+                companyName: fullName,
+                companyEmail: email,
+                companyPhoneNumber: phoneNumber
+            });
+        }
+
+        res.status(201).json({ 
+            message: "User created successfully", 
+            user: {
+                _id: newUser._id,
+                fullName: newUser.fullName,
+                email: newUser.email,
+                role: newUser.role,
+                isActive: newUser.isActive
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error creating user", error: error.message });
+    }
+});
+
+// User management - keep existing endpoint for backward compatibility
+router.post("/users", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { fullName, email, password, phoneNumber, role } = req.body;
+
+        if (!fullName || !email || !password || !phoneNumber || !role) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({
+            fullName, email, phoneNumber, password: hashedPassword, role,
+            isVerified: true, isActive: true, approvalStatus: "Approved"
+        });
+
+        await newUser.save();
+        res.status(201).json({ message: "User created successfully", user: newUser });
+    } catch (error) {
+        res.status(500).json({ message: "Error creating user", error: error.message });
+    }
+});
+
+router.get("/users", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { page = 1, limit = 10, role, approvalStatus, search } = req.query;
+        
+        let query = {};
+        
+        if (role) {
+            query.role = role;
+        }
+        
+        if (approvalStatus) {
+            query.approvalStatus = approvalStatus;
+        }
+        
+        if (search) {
+            query.$or = [
+                { fullName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const users = await User.find(query)
+            .select("-password")
+            .limit(parseInt(limit))
+            .skip((parseInt(page) - 1) * parseInt(limit))
+            .sort({ createdAt: -1 });
+
+        const total = await User.countDocuments(query);
+
+        res.json({
+            success: true,
+            data: {
+                users,
+                pagination: {
+                    total,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    pages: Math.ceil(total / parseInt(limit))
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching users", error: error.message });
+    }
+});
+
+router.put("/users/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        const user = await User.findByIdAndUpdate(id, updateData, { new: true }).select("-password");
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ message: "User updated successfully", user });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating user", error: error.message });
+    }
+});
+
+router.delete("/users/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        await User.findByIdAndDelete(id);
+        res.json({ message: "User deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Error deleting user", error: error.message });
+    }
+});
+
+// User approval endpoint
+router.put("/users/:id/approval", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { approvalStatus } = req.body;
+
+        const validStatuses = ["Pending", "Approved", "Rejected"];
+        if (!validStatuses.includes(approvalStatus)) {
+            return res.status(400).json({ message: "Invalid approval status" });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            id,
+            { approvalStatus, updatedAt: new Date() },
+            { new: true }
+        ).select("-password");
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ 
+            message: `User ${approvalStatus.toLowerCase()} successfully`, 
+            user 
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating user approval status", error: error.message });
+    }
+});
+
+// NGO management
+router.get("/ngos", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const ngos = await NGO.find().populate("userId", "fullName email");
+        res.json(ngos);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching NGOs", error: error.message });
+    }
+});
+
+router.put("/ngos/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const ngo = await NGO.findByIdAndUpdate(id, req.body, { new: true });
+        if (!ngo) {
+            return res.status(404).json({ message: "NGO not found" });
+        }
+        res.json({ message: "NGO updated successfully", ngo });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating NGO", error: error.message });
+    }
+});
+
+// Company management
+router.get("/companies", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const companies = await Company.find().populate("userId", "fullName email");
+        res.json(companies);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching companies", error: error.message });
+    }
+});
+
+router.put("/companies/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const company = await Company.findByIdAndUpdate(id, req.body, { new: true });
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+        res.json({ message: "Company updated successfully", company });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating company", error: error.message });
+    }
+});
+
+// Campaign management
+router.get("/campaigns", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const campaigns = await Campaign.find().populate("ngoId", "ngoName");
+        res.json(campaigns);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching campaigns", error: error.message });
+    }
+});
+
+router.put("/campaigns/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const campaign = await Campaign.findByIdAndUpdate(id, req.body, { new: true });
+        if (!campaign) {
+            return res.status(404).json({ message: "Campaign not found" });
+        }
+        res.json({ message: "Campaign updated successfully", campaign });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating campaign", error: error.message });
+    }
+});
+
+router.delete("/campaigns/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Campaign.findByIdAndDelete(id);
+        res.json({ message: "Campaign deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Error deleting campaign", error: error.message });
+    }
+});
+
+// Notice management
+router.post("/notices", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const notice = new Notice(req.body);
+        await notice.save();
+        res.status(201).json({ message: "Notice created successfully", notice });
+    } catch (error) {
+        res.status(500).json({ message: "Error creating notice", error: error.message });
+    }
+});
+
+router.get("/notices", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const notices = await Notice.find();
+        res.json(notices);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching notices", error: error.message });
+    }
+});
+
+// Settings management
+router.get("/settings", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const settings = await Settings.findOne();
+        res.json(settings || {});
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching settings", error: error.message });
+    }
+});
+
+router.put("/settings", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const settings = await Settings.findOneAndUpdate({}, req.body, { 
+            new: true, 
+            upsert: true 
+        });
+        res.json({ message: "Settings updated successfully", settings });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating settings", error: error.message });
+    }
+});
+
+// Individual NGO management
+router.get("/ngos/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const ngo = await NGO.findById(id).populate("userId", "fullName email");
+        if (!ngo) {
+            return res.status(404).json({ message: "NGO not found" });
+        }
+        res.json({ success: true, ngo });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching NGO", error: error.message });
+    }
+});
+
+router.put("/ngos/:id/status", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+        const ngo = await NGO.findByIdAndUpdate(id, { isActive }, { new: true });
+        if (!ngo) {
+            return res.status(404).json({ message: "NGO not found" });
+        }
+        res.json({ message: `NGO ${isActive ? 'enabled' : 'disabled'} successfully`, ngo });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating NGO status", error: error.message });
+    }
+});
+
+router.post("/ngos/:id/share", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const shareLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/ngo/${id}`;
+        res.json({ message: "Share link generated", shareLink });
+    } catch (error) {
+        res.status(500).json({ message: "Error generating share link", error: error.message });
+    }
+});
+
+router.delete("/ngos/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        await NGO.findByIdAndDelete(id);
+        res.json({ message: "NGO deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Error deleting NGO", error: error.message });
+    }
+});
+
+// Individual Company management
+router.get("/companies/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const company = await Company.findById(id).populate("userId", "fullName email");
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+        res.json({ success: true, company });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching company", error: error.message });
+    }
+});
+
+router.put("/companies/:id/status", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+        const company = await Company.findByIdAndUpdate(id, { isActive }, { new: true });
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+        res.json({ message: `Company ${isActive ? 'enabled' : 'disabled'} successfully`, company });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating company status", error: error.message });
+    }
+});
+
+router.post("/companies/:id/share", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const shareLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/company/${id}`;
+        res.json({ message: "Share link generated", shareLink });
+    } catch (error) {
+        res.status(500).json({ message: "Error generating share link", error: error.message });
+    }
+});
+
+router.delete("/companies/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Company.findByIdAndDelete(id);
+        res.json({ message: "Company deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Error deleting company", error: error.message });
+    }
+});
+
+// Individual Campaign management
+router.post("/campaigns", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const campaign = new Campaign(req.body);
+        await campaign.save();
+        res.status(201).json({ message: "Campaign created successfully", campaign });
+    } catch (error) {
+        res.status(500).json({ message: "Error creating campaign", error: error.message });
+    }
+});
+
+router.get("/campaigns/:id", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const campaign = await Campaign.findById(id).populate("ngoId", "ngoName");
+        if (!campaign) {
+            return res.status(404).json({ message: "Campaign not found" });
+        }
+        res.json({ success: true, campaign });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching campaign", error: error.message });
+    }
+});
+
+router.put("/campaigns/:id/status", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+        const campaign = await Campaign.findByIdAndUpdate(id, { isActive }, { new: true });
+        if (!campaign) {
+            return res.status(404).json({ message: "Campaign not found" });
+        }
+        res.json({ message: `Campaign ${isActive ? 'enabled' : 'disabled'} successfully`, campaign });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating campaign status", error: error.message });
+    }
+});
+
+router.post("/campaigns/:id/share", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const shareLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/campaign/${id}`;
+        res.json({ message: "Share link generated", shareLink });
+    } catch (error) {
+        res.status(500).json({ message: "Error generating share link", error: error.message });
+    }
+});
+
+// Reports & Analytics endpoints
+router.get("/reports/ngos", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const ngoStats = await NGO.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalNGOs: { $sum: 1 },
+                    activeNGOs: { $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] } },
+                    inactiveNGOs: { $sum: { $cond: [{ $eq: ["$isActive", false] }, 1, 0] } }
+                }
+            }
+        ]);
+        res.json({ success: true, data: ngoStats[0] || {} });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching NGO reports", error: error.message });
+    }
+});
+
+router.get("/reports/companies", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const companyStats = await Company.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalCompanies: { $sum: 1 },
+                    activeCompanies: { $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] } },
+                    inactiveCompanies: { $sum: { $cond: [{ $eq: ["$isActive", false] }, 1, 0] } }
+                }
+            }
+        ]);
+        res.json({ success: true, data: companyStats[0] || {} });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching company reports", error: error.message });
+    }
+});
+
+router.get("/reports/campaigns", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const campaignStats = await Campaign.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalCampaigns: { $sum: 1 },
+                    activeCampaigns: { $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] } },
+                    totalTargetAmount: { $sum: "$targetAmount" },
+                    totalRaisedAmount: { $sum: "$raisedAmount" }
+                }
+            }
+        ]);
+        res.json({ success: true, data: campaignStats[0] || {} });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching campaign reports", error: error.message });
+    }
+});
+
+router.get("/reports/donations", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        // This would require a Donation model which we'll assume exists
+        res.json({ success: true, data: { totalDonations: 0, totalAmount: 0 } });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching donation reports", error: error.message });
+    }
+});
+
+router.get("/reports/activities", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        const activityStats = await Activity.aggregate([
+            {
+                $group: {
+                    _id: "$action",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+        res.json({ success: true, data: activityStats });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching activity reports", error: error.message });
+    }
+});
+
+router.get("/reports/transactions", authMiddleware(["Admin"]), async (req, res) => {
+    try {
+        // This would require a Transaction model which we'll assume exists
+        res.json({ success: true, data: { totalTransactions: 0, totalAmount: 0 } });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching transaction reports", error: error.message });
+    }
+});
+
+module.exports = router;
