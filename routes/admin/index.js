@@ -526,13 +526,21 @@ router.post("/ngos/:id/share", authMiddleware(["admin"]), async (req, res) => {
         const { id } = req.params;
         const ShareLink = require("../../models/ShareLink");
 
-        const shareLink = new ShareLink({
+        // Check if share link already exists for this NGO
+        let shareLink = await ShareLink.findOne({
             resourceType: "profile",
-            resourceId: id,
-            createdBy: req.user.id
+            resourceId: id
         });
 
-        await shareLink.save();
+        if (!shareLink) {
+            // Create new share link only if one doesn't exist
+            shareLink = new ShareLink({
+                resourceType: "profile",
+                resourceId: id,
+                createdBy: req.user.id
+            });
+            await shareLink.save();
+        }
 
         const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`;
         res.json({ message: "Share link generated", shareLink: shareUrl });
@@ -590,13 +598,21 @@ router.post("/ngos/:id/share", authMiddleware(["admin"]), async (req, res) => {
         const { id } = req.params;
         const ShareLink = require("../../models/ShareLink");
 
-        const shareLink = new ShareLink({
+        // Check if share link already exists for this NGO
+        let shareLink = await ShareLink.findOne({
             resourceType: "profile",
-            resourceId: id,
-            createdBy: req.user.id
+            resourceId: id
         });
 
-        await shareLink.save();
+        if (!shareLink) {
+            // Create new share link only if one doesn't exist
+            shareLink = new ShareLink({
+                resourceType: "profile",
+                resourceId: id,
+                createdBy: req.user.id
+            });
+            await shareLink.save();
+        }
 
         const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`;
         res.json({ message: "Share link generated", shareLink: shareUrl });
@@ -676,13 +692,21 @@ router.post(
             const { id } = req.params;
             const ShareLink = require("../../models/ShareLink");
 
-            const shareLink = new ShareLink({
+            // Check if share link already exists for this Company
+            let shareLink = await ShareLink.findOne({
                 resourceType: "profile",
-                resourceId: id,
-                createdBy: req.user.id
+                resourceId: id
             });
 
-            await shareLink.save();
+            if (!shareLink) {
+                // Create new share link only if one doesn't exist
+                shareLink = new ShareLink({
+                    resourceType: "profile",
+                    resourceId: id,
+                    createdBy: req.user.id
+                });
+                await shareLink.save();
+            }
 
             const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`;
             res.json({ message: "Share link generated", shareLink: shareUrl });
@@ -750,13 +774,21 @@ router.post(
             const { id } = req.params;
             const ShareLink = require("../../models/ShareLink");
 
-            const shareLink = new ShareLink({
+            // Check if share link already exists for this Company
+            let shareLink = await ShareLink.findOne({
                 resourceType: "profile",
-                resourceId: id,
-                createdBy: req.user.id
+                resourceId: id
             });
 
-            await shareLink.save();
+            if (!shareLink) {
+                // Create new share link only if one doesn't exist
+                shareLink = new ShareLink({
+                    resourceType: "profile",
+                    resourceId: id,
+                    createdBy: req.user.id
+                });
+                await shareLink.save();
+            }
 
             const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`;
             res.json({ message: "Share link generated", shareLink: shareUrl });
@@ -786,14 +818,14 @@ router.delete("/companies/:id", authMiddleware(["admin"]), async (req, res) => {
 router.get("/share/:shareId/customize", authMiddleware(["admin"]), async (req, res) => {
     try {
         const { shareId } = req.params;
-        
+
         const ShareLink = require("../../models/ShareLink");
-        
+
         const shareLink = await ShareLink.findOne({ shareId });
         if (!shareLink) {
             return res.status(404).json({ message: "Share link not found" });
         }
-        
+
         res.json({ 
             message: "Custom design retrieved successfully",
             customDesign: shareLink.customDesign || {},
@@ -817,17 +849,17 @@ router.put("/share/:shareId/customize", authMiddleware(["admin"]), async (req, r
     try {
         const { shareId } = req.params;
         const { customDesign } = req.body;
-        
+
         const ShareLink = require("../../models/ShareLink");
-        
+
         const shareLink = await ShareLink.findOne({ shareId });
         if (!shareLink) {
             return res.status(404).json({ message: "Share link not found" });
         }
-        
+
         shareLink.customDesign = customDesign;
         await shareLink.save();
-        
+
         res.json({ 
             message: "Custom design updated successfully",
             shareLink 
@@ -893,13 +925,21 @@ router.post(
             const { id } = req.params;
             const ShareLink = require("../../models/ShareLink");
 
-            const shareLink = new ShareLink({
+            // Check if share link already exists for this Campaign
+            let shareLink = await ShareLink.findOne({
                 resourceType: "campaign",
-                resourceId: id,
-                createdBy: req.user.id
+                resourceId: id
             });
 
-            await shareLink.save();
+            if (!shareLink) {
+                // Create new share link only if one doesn't exist
+                shareLink = new ShareLink({
+                    resourceType: "campaign",
+                    resourceId: id,
+                    createdBy: req.user.id
+                });
+                await shareLink.save();
+            }
 
             const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/campaign/${shareLink.shareId}`;
             res.json({ message: "Share link generated", shareLink: shareUrl });
@@ -984,13 +1024,21 @@ router.post(
             const { id } = req.params;
             const ShareLink = require("../../models/ShareLink");
 
-            const shareLink = new ShareLink({
+            // Check if share link already exists for this Campaign
+            let shareLink = await ShareLink.findOne({
                 resourceType: "campaign",
-                resourceId: id,
-                createdBy: req.user.id
+                resourceId: id
             });
 
-            await shareLink.save();
+            if (!shareLink) {
+                // Create new share link only if one doesn't exist
+                shareLink = new ShareLink({
+                    resourceType: "campaign",
+                    resourceId: id,
+                    createdBy: req.user.id
+                });
+                await shareLink.save();
+            }
 
             const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/campaign/${shareLink.shareId}`;
             res.json({ message: "Share link generated", shareLink: shareUrl });
@@ -1246,13 +1294,21 @@ router.post("/ngos/:id/share", authMiddleware, async (req, res) => {
         const { id } = req.params;
         const ShareLink = require("../../models/ShareLink");
 
-        const shareLink = new ShareLink({
+        // Check if share link already exists for this NGO
+        let shareLink = await ShareLink.findOne({
             resourceType: "profile",
-            resourceId: id,
-            createdBy: req.user.id,
+            resourceId: id
         });
 
-        await shareLink.save();
+        if (!shareLink) {
+            // Create new share link only if one doesn't exist
+            shareLink = new ShareLink({
+                resourceType: "profile",
+                resourceId: id,
+                createdBy: req.user.id,
+            });
+            await shareLink.save();
+        }
 
         res.json({
             status: "success",
@@ -1273,13 +1329,21 @@ router.post("/companies/:id/share", authMiddleware, async (req, res) => {
         const { id } = req.params;
         const ShareLink = require("../../models/ShareLink");
 
-        const shareLink = new ShareLink({
+        // Check if share link already exists for this Company
+        let shareLink = await ShareLink.findOne({
             resourceType: "profile",
-            resourceId: id,
-            createdBy: req.user.id,
+            resourceId: id
         });
 
-        await shareLink.save();
+        if (!shareLink) {
+            // Create new share link only if one doesn't exist
+            shareLink = new ShareLink({
+                resourceType: "profile",
+                resourceId: id,
+                createdBy: req.user.id,
+            });
+            await shareLink.save();
+        }
 
         res.json({
             status: "success",
@@ -1300,13 +1364,21 @@ router.post("/campaigns/:id/share", authMiddleware, async (req, res) => {
         const { id } = req.params;
         const ShareLink = require("../../models/ShareLink");
 
-        const shareLink = new ShareLink({
+        // Check if share link already exists for this Campaign
+        let shareLink = await ShareLink.findOne({
             resourceType: "campaign",
-            resourceId: id,
-            createdBy: req.user.id,
+            resourceId: id
         });
 
-        await shareLink.save();
+        if (!shareLink) {
+            // Create new share link only if one doesn't exist
+            shareLink = new ShareLink({
+                resourceType: "campaign",
+                resourceId: id,
+                createdBy: req.user.id,
+            });
+            await shareLink.save();
+        }
 
         res.json({
             status: "success",
@@ -1415,6 +1487,105 @@ router.get("/reports/transactions", authMiddleware, async (req, res) => {
         res.status(500).json({
             status: "error",
             message: error.message,
+        });
+    }
+});
+
+// User profile customization for share links
+router.put("/users/:id/customize", authMiddleware(["admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { html, css, customDesign } = req.body;
+
+        const ShareLink = require("../../models/ShareLink");
+
+        // First, find if there's already a share link for this user profile
+        let shareLink = await ShareLink.findOne({ 
+            resourceType: "profile", 
+            resourceId: id 
+        });
+
+        // Prepare the custom design object
+        let designData = {};
+        if (html || css) {
+            designData = {
+                html: html || "",
+                css: css || "",
+                ...(customDesign || {})
+            };
+        } else if (customDesign) {
+            designData = customDesign;
+        }
+
+        if (!shareLink) {
+            // Create new share link if it doesn't exist
+            shareLink = new ShareLink({
+                resourceType: "profile",
+                resourceId: id,
+                customDesign: designData,
+                createdBy: req.user.id
+            });
+        } else {
+            // Update existing share link
+            shareLink.customDesign = designData;
+        }
+
+        await shareLink.save();
+
+        res.json({ 
+            message: "Profile customization saved successfully",
+            shareLink: {
+                shareId: shareLink.shareId,
+                shareUrl: `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`,
+                apiUrl: `http://localhost:5000/api/public/share/profile/${shareLink.shareId}`,
+                customDesign: shareLink.customDesign
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error saving profile customization",
+            error: error.message,
+        });
+    }
+});
+
+// Get user profile customization
+router.get("/users/:id/customize", authMiddleware(["admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const ShareLink = require("../../models/ShareLink");
+
+        const shareLink = await ShareLink.findOne({ 
+            resourceType: "profile", 
+            resourceId: id 
+        });
+
+        if (!shareLink) {
+            return res.json({ 
+                message: "No customization found",
+                customDesign: { html: "", css: "" },
+                shareUrl: null,
+                apiUrl: null
+            });
+        }
+
+        res.json({ 
+            message: "Profile customization retrieved successfully",
+            customDesign: shareLink.customDesign || { html: "", css: "" },
+            shareUrl: `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`,
+            apiUrl: `http://localhost:5000/api/public/share/profile/${shareLink.shareId}`,
+            shareLink: {
+                shareId: shareLink.shareId,
+                resourceType: shareLink.resourceType,
+                isActive: shareLink.isActive,
+                viewCount: shareLink.viewCount
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error retrieving profile customization",
+            error: error.message,
         });
     }
 });

@@ -78,7 +78,9 @@ router.post("/", authMiddleware(["ngo"]), upload.fields([
         const campaignData = {
             ...req.body,
             ngoId: ngo._id,
-            createdBy: userId
+            createdBy: userId,
+            approvalStatus: "pending",
+            isActive: false
         };
 
         if (req.files?.campaignImage) {

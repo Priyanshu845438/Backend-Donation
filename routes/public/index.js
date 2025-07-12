@@ -51,7 +51,35 @@ router.get("/share/profile/:shareId", async (req, res) => {
             return res.status(404).json({ message: "Shared profile not found or expired" });
         }
 
-        // Check if it's an NGO or Company profile
+        // First check if it's a User profile (direct user ID)
+        const user = await User.findById(shareLink.resourceId).select("-password");
+        if (user) {
+            let profileData = null;
+            
+            if (user.role === "ngo") {
+                profileData = await NGO.findOne({ userId: user._id });
+            } else if (user.role === "company") {
+                profileData = await Company.findOne({ userId: user._id });
+            }
+
+            // Update view count
+            shareLink.viewCount += 1;
+            shareLink.lastViewed = new Date();
+            await shareLink.save();
+
+            return res.json({
+                success: true,
+                data: {
+                    type: user.role,
+                    user: user,
+                    profile: profileData,
+                    customDesign: shareLink.customDesign || {},
+                    viewCount: shareLink.viewCount
+                }
+            });
+        }
+
+        // Fallback: Check if it's an NGO or Company profile directly
         const ngo = await NGO.findById(shareLink.resourceId).populate("userId", "fullName email");
         if (ngo) {
             // Update view count
@@ -64,6 +92,7 @@ router.get("/share/profile/:shareId", async (req, res) => {
                 data: {
                     type: "ngo",
                     profile: ngo,
+                    customDesign: shareLink.customDesign || {},
                     viewCount: shareLink.viewCount
                 }
             });
@@ -81,6 +110,7 @@ router.get("/share/profile/:shareId", async (req, res) => {
                 data: {
                     type: "company",
                     profile: company,
+                    customDesign: shareLink.customDesign || {},
                     viewCount: shareLink.viewCount
                 }
             });
@@ -130,6 +160,37 @@ router.get("/share/campaign/:shareId", async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ message: "Error accessing shared campaign", error: error.message });
+    }
+});
+
+// Redirect shared profile to frontend
+router.get("/share/profile/:shareId/render", async (req, res) => {
+    try {
+        const { shareId } = req.params;
+
+        const shareLink = await ShareLink.findOne({ 
+            shareId, 
+            resourceType: "profile",
+            isActive: true 
+        });
+
+        if (!shareLink) {
+            // Redirect to frontend with error
+            return res.redirect(`http://localhost:5173/share/profile/${shareId}?error=not_found`);
+        }
+
+        // Update view count
+        shareLink.viewCount += 1;
+        shareLink.lastViewed = new Date();
+        await shareLink.save();
+
+        // Redirect to frontend
+        return res.redirect(`http://localhost:5173/share/profile/${shareId}`);
+
+    } catch (error) {
+        console.error("Render profile error:", error);
+        // Redirect to frontend with error
+        return res.redirect(`http://localhost:5173/share/profile/${req.params.shareId}?error=server_error`);
     }
 });
 

@@ -739,6 +739,207 @@ class AdminController {
         }
     }
 
+    // Campaign Management
+    static async getAllCampaigns(req, res) {
+        try {
+            const { page = 1, limit = 10, status, approvalStatus, search } = req.query;
+
+            const filter = {};
+            if (status) filter.isActive = status === "active";
+            if (approvalStatus) filter.approvalStatus = approvalStatus;
+            if (search) {
+                filter.$or = [
+                    { title: { $regex: search, $options: "i" } },
+                    { campaignName: { $regex: search, $options: "i" } },
+                    { description: { $regex: search, $options: "i" } }
+                ];
+            }
+
+            const campaigns = await Campaign.find(filter)
+                .populate("ngoId", "ngoName email")
+                .populate("createdBy", "fullName email")
+                .sort({ createdAt: -1 })
+                .limit(limit * 1)
+                .skip((page - 1) * limit);
+
+            const total = await Campaign.countDocuments(filter);
+
+            // Get approval statistics
+            const approvalStats = await Campaign.aggregate([
+                { $group: { _id: "$approvalStatus", count: { $sum: 1 } } }
+            ]);
+
+            return createSuccessResponse(res, 200, {
+                message: "Campaigns retrieved successfully",
+                campaigns,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total,
+                    pages: Math.ceil(total / limit)
+                },
+                approvalStats
+            });
+
+        } catch (error) {
+            console.error("Get campaigns error:", error);
+            return createErrorResponse(res, 500, "Failed to retrieve campaigns", error.message);
+        }
+    }
+
+    static async approveCampaign(req, res) {
+        try {
+            const { id } = req.params;
+            const { status, adminNote } = req.body;
+
+            const validStatuses = ["approved", "rejected"];
+            if (!validStatuses.includes(status)) {
+                return createErrorResponse(res, 400, "Invalid approval status");
+            }
+
+            const updateData = {
+                approvalStatus: status,
+                isActive: status === "approved",
+                updatedAt: new Date()
+            };
+
+            if (status === "rejected" && adminNote) {
+                updateData.adminNote = adminNote;
+            }
+
+            const campaign = await Campaign.findByIdAndUpdate(
+                id,
+                updateData,
+                { new: true }
+            ).populate("ngoId", "ngoName email")
+             .populate("createdBy", "fullName email");
+
+            if (!campaign) {
+                return createErrorResponse(res, 404, "Campaign not found");
+            }
+
+            await Activity.create({
+                userId: req.user.id,
+                action: "admin_campaign_approval",
+                description: `Admin ${status} campaign: ${campaign.title || campaign.campaignName}`,
+                metadata: { campaignId: id, status, adminNote }
+            });
+
+            // Send notification to NGO (if email system is set up)
+            // await this.sendCampaignApprovalEmail(campaign, status, adminNote);
+
+            return createSuccessResponse(res, 200, {
+                message: `Campaign ${status} successfully`,
+                campaign
+            });
+
+        } catch (error) {
+            console.error("Approve campaign error:", error);
+            return createErrorResponse(res, 500, "Failed to approve campaign", error.message);
+        }
+    }
+
+    static async getCampaignDetails(req, res) {
+        try {
+            const { id } = req.params;
+
+            const campaign = await Campaign.findById(id)
+                .populate("ngoId", "ngoName email contactNumber")
+                .populate("createdBy", "fullName email phoneNumber");
+
+            if (!campaign) {
+                return createErrorResponse(res, 404, "Campaign not found");
+            }
+
+            // Get campaign donations if any
+            const donations = await Donation.find({ campaignId: id })
+                .populate("donorId", "fullName email")
+                .sort({ createdAt: -1 });
+
+            const donationStats = {
+                totalDonations: donations.length,
+                totalAmount: donations.reduce((sum, donation) => sum + donation.amount, 0),
+                averageAmount: donations.length > 0 ? donations.reduce((sum, donation) => sum + donation.amount, 0) / donations.length : 0
+            };
+
+            return createSuccessResponse(res, 200, {
+                message: "Campaign details retrieved successfully",
+                campaign,
+                donations,
+                donationStats
+            });
+
+        } catch (error) {
+            console.error("Get campaign details error:", error);
+            return createErrorResponse(res, 500, "Failed to retrieve campaign details", error.message);
+        }
+    }
+
+    static async updateCampaign(req, res) {
+        try {
+            const { id } = req.params;
+            const updateData = req.body;
+
+            const campaign = await Campaign.findByIdAndUpdate(
+                id,
+                { ...updateData, updatedAt: new Date() },
+                { new: true, runValidators: true }
+            ).populate("ngoId", "ngoName email");
+
+            if (!campaign) {
+                return createErrorResponse(res, 404, "Campaign not found");
+            }
+
+            await Activity.create({
+                userId: req.user.id,
+                action: "admin_update_campaign",
+                description: `Admin updated campaign: ${campaign.title || campaign.campaignName}`,
+                metadata: { campaignId: id, updatedFields: Object.keys(updateData) }
+            });
+
+            return createSuccessResponse(res, 200, {
+                message: "Campaign updated successfully",
+                campaign
+            });
+
+        } catch (error) {
+            console.error("Update campaign error:", error);
+            return createErrorResponse(res, 500, "Failed to update campaign", error.message);
+        }
+    }
+
+    static async deleteCampaign(req, res) {
+        try {
+            const { id } = req.params;
+
+            const campaign = await Campaign.findById(id);
+            if (!campaign) {
+                return createErrorResponse(res, 404, "Campaign not found");
+            }
+
+            // Delete associated donations
+            await Donation.deleteMany({ campaignId: id });
+
+            // Delete the campaign
+            await Campaign.findByIdAndDelete(id);
+
+            await Activity.create({
+                userId: req.user.id,
+                action: "admin_delete_campaign",
+                description: `Admin deleted campaign: ${campaign.title || campaign.campaignName}`,
+                metadata: { deletedCampaignId: id }
+            });
+
+            return createSuccessResponse(res, 200, {
+                message: "Campaign and associated data deleted successfully"
+            });
+
+        } catch (error) {
+            console.error("Delete campaign error:", error);
+            return createErrorResponse(res, 500, "Failed to delete campaign", error.message);
+        }
+    }
+
     // Add more methods for reports, campaign management, etc.
 }
 

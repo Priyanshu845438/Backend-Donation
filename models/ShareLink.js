@@ -7,16 +7,21 @@ const ShareLinkSchema = new mongoose.Schema({
     resourceType: { type: String, enum: ["profile", "campaign", "portfolio"], required: true },
     resourceId: { type: mongoose.Schema.Types.ObjectId, required: true },
     customDesign: {
-        html: String,
-        css: String,
-        additionalData: mongoose.Schema.Types.Mixed
+        type: mongoose.Schema.Types.Mixed,
+        default: function() { return {}; }
     },
     isActive: { type: Boolean, default: true },
     viewCount: { type: Number, default: 0 },
     lastViewed: { type: Date },
     expiresAt: { type: Date },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
-}, { timestamps: true });
+}, { 
+    timestamps: true,
+    minimize: false // Ensure empty objects are saved
+});
+
+// Add index for faster lookups
+ShareLinkSchema.index({ resourceType: 1, resourceId: 1 }, { unique: true });
 
 ShareLinkSchema.pre("save", function(next) {
     if (!this.shareId) {
