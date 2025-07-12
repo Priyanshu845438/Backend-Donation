@@ -524,8 +524,18 @@ router.put("/ngos/:id/status", authMiddleware(["admin"]), async (req, res) => {
 router.post("/ngos/:id/share", authMiddleware(["admin"]), async (req, res) => {
     try {
         const { id } = req.params;
-        const shareLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/ngo/${id}`;
-        res.json({ message: "Share link generated", shareLink });
+        const ShareLink = require("../../models/ShareLink");
+
+        const shareLink = new ShareLink({
+            resourceType: "profile",
+            resourceId: id,
+            createdBy: req.user.id
+        });
+
+        await shareLink.save();
+
+        const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`;
+        res.json({ message: "Share link generated", shareLink: shareUrl });
     } catch (error) {
         res.status(500).json({
             message: "Error generating share link",
@@ -578,8 +588,18 @@ router.put("/ngos/:id/status", authMiddleware(["admin"]), async (req, res) => {
 router.post("/ngos/:id/share", authMiddleware(["admin"]), async (req, res) => {
     try {
         const { id } = req.params;
-        const shareLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/ngo/${id}`;
-        res.json({ message: "Share link generated", shareLink });
+        const ShareLink = require("../../models/ShareLink");
+
+        const shareLink = new ShareLink({
+            resourceType: "profile",
+            resourceId: id,
+            createdBy: req.user.id
+        });
+
+        await shareLink.save();
+
+        const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`;
+        res.json({ message: "Share link generated", shareLink: shareUrl });
     } catch (error) {
         res.status(500).json({
             message: "Error generating share link",
@@ -654,8 +674,18 @@ router.post(
     async (req, res) => {
         try {
             const { id } = req.params;
-            const shareLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/company/${id}`;
-            res.json({ message: "Share link generated", shareLink });
+            const ShareLink = require("../../models/ShareLink");
+
+            const shareLink = new ShareLink({
+                resourceType: "profile",
+                resourceId: id,
+                createdBy: req.user.id
+            });
+
+            await shareLink.save();
+
+            const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`;
+            res.json({ message: "Share link generated", shareLink: shareUrl });
         } catch (error) {
             res.status(500).json({
                 message: "Error generating share link",
@@ -718,8 +748,18 @@ router.post(
     async (req, res) => {
         try {
             const { id } = req.params;
-            const shareLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/company/${id}`;
-            res.json({ message: "Share link generated", shareLink });
+            const ShareLink = require("../../models/ShareLink");
+
+            const shareLink = new ShareLink({
+                resourceType: "profile",
+                resourceId: id,
+                createdBy: req.user.id
+            });
+
+            await shareLink.save();
+
+            const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/profile/${shareLink.shareId}`;
+            res.json({ message: "Share link generated", shareLink: shareUrl });
         } catch (error) {
             res.status(500).json({
                 message: "Error generating share link",
@@ -737,6 +777,64 @@ router.delete("/companies/:id", authMiddleware(["admin"]), async (req, res) => {
     } catch (error) {
         res.status(500).json({
             message: "Error deleting company",
+            error: error.message,
+        });
+    }
+});
+
+// Get share link custom design
+router.get("/share/:shareId/customize", authMiddleware(["admin"]), async (req, res) => {
+    try {
+        const { shareId } = req.params;
+        
+        const ShareLink = require("../../models/ShareLink");
+        
+        const shareLink = await ShareLink.findOne({ shareId });
+        if (!shareLink) {
+            return res.status(404).json({ message: "Share link not found" });
+        }
+        
+        res.json({ 
+            message: "Custom design retrieved successfully",
+            customDesign: shareLink.customDesign || {},
+            shareLink: {
+                shareId: shareLink.shareId,
+                resourceType: shareLink.resourceType,
+                isActive: shareLink.isActive,
+                viewCount: shareLink.viewCount
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error retrieving custom design",
+            error: error.message,
+        });
+    }
+});
+
+// Update share link custom design
+router.put("/share/:shareId/customize", authMiddleware(["admin"]), async (req, res) => {
+    try {
+        const { shareId } = req.params;
+        const { customDesign } = req.body;
+        
+        const ShareLink = require("../../models/ShareLink");
+        
+        const shareLink = await ShareLink.findOne({ shareId });
+        if (!shareLink) {
+            return res.status(404).json({ message: "Share link not found" });
+        }
+        
+        shareLink.customDesign = customDesign;
+        await shareLink.save();
+        
+        res.json({ 
+            message: "Custom design updated successfully",
+            shareLink 
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error updating custom design",
             error: error.message,
         });
     }
@@ -793,8 +891,18 @@ router.post(
     async (req, res) => {
         try {
             const { id } = req.params;
-            const shareLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/campaign/${id}`;
-            res.json({ message: "Share link generated", shareLink });
+            const ShareLink = require("../../models/ShareLink");
+
+            const shareLink = new ShareLink({
+                resourceType: "campaign",
+                resourceId: id,
+                createdBy: req.user.id
+            });
+
+            await shareLink.save();
+
+            const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/campaign/${shareLink.shareId}`;
+            res.json({ message: "Share link generated", shareLink: shareUrl });
         } catch (error) {
             res.status(500).json({
                 message: "Error generating share link",
@@ -874,8 +982,18 @@ router.post(
     async (req, res) => {
         try {
             const { id } = req.params;
-            const shareLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/campaign/${id}`;
-            res.json({ message: "Share link generated", shareLink });
+            const ShareLink = require("../../models/ShareLink");
+
+            const shareLink = new ShareLink({
+                resourceType: "campaign",
+                resourceId: id,
+                createdBy: req.user.id
+            });
+
+            await shareLink.save();
+
+            const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/campaign/${shareLink.shareId}`;
+            res.json({ message: "Share link generated", shareLink: shareUrl });
         } catch (error) {
             res.status(500).json({
                 message: "Error generating share link",

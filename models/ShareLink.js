@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const crypto = require("crypto");
 
 const ShareLinkSchema = new mongoose.Schema({
-    shareId: { type: String, unique: true, required: true },
+    shareId: { type: String, unique: true },
     resourceType: { type: String, enum: ["profile", "campaign", "portfolio"], required: true },
     resourceId: { type: mongoose.Schema.Types.ObjectId, required: true },
     customDesign: {
@@ -19,6 +19,13 @@ const ShareLinkSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 ShareLinkSchema.pre("save", function(next) {
+    if (!this.shareId) {
+        this.shareId = crypto.randomBytes(16).toString("hex");
+    }
+    next();
+});
+
+ShareLinkSchema.pre("validate", function(next) {
     if (!this.shareId) {
         this.shareId = crypto.randomBytes(16).toString("hex");
     }

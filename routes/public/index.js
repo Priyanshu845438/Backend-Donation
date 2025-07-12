@@ -1,117 +1,157 @@
-const express = require('express');
+
+const express = require("express");
+const Campaign = require("../../models/Campaign");
+const NGO = require("../../models/NGO");
+const Company = require("../../models/Company");
+const ShareLink = require("../../models/ShareLink");
+const User = require("../../models/User");
+
 const router = express.Router();
-const User = require('../../models/User');
-const Campaign = require('../../models/Campaign');
 
-// Get all active NGOs
-router.get('/ngos', async (req, res) => {
+// Get all public campaigns
+router.get("/campaigns", async (req, res) => {
     try {
-        const ngos = await User.find({ 
-            role: 'ngo', 
-            isActive: true 
-        }).select('-password -__v');
-
-        res.json({
-            message: 'NGOs retrieved successfully',
-            ngos
-        });
+        const campaigns = await Campaign.find({ isActive: true })
+            .populate("ngoId", "ngoName email")
+            .sort({ createdAt: -1 });
+        res.json({ success: true, campaigns });
     } catch (error) {
-        res.status(500).json({
-            message: 'Error retrieving NGOs',
-            error: error.message
-        });
+        res.status(500).json({ message: "Error fetching campaigns", error: error.message });
     }
 });
 
-// Get all active companies
-router.get('/companies', async (req, res) => {
+// Get specific campaign
+router.get("/campaigns/:id", async (req, res) => {
     try {
-        const companies = await User.find({ 
-            role: 'company', 
-            isActive: true 
-        }).select('-password -__v');
+        const { id } = req.params;
+        const campaign = await Campaign.findById(id).populate("ngoId", "ngoName email");
+        
+        if (!campaign) {
+            return res.status(404).json({ message: "Campaign not found" });
+        }
 
-        res.json({
-            message: 'Companies retrieved successfully',
-            companies
-        });
+        res.json({ success: true, campaign });
     } catch (error) {
-        res.status(500).json({
-            message: 'Error retrieving companies',
-            error: error.message
-        });
+        res.status(500).json({ message: "Error fetching campaign", error: error.message });
     }
 });
 
-// Get all active campaigns
-router.get('/campaigns', async (req, res) => {
+// Access shared profile
+router.get("/share/profile/:shareId", async (req, res) => {
     try {
-        const campaigns = await Campaign.find({ 
+        const { shareId } = req.params;
+
+        const shareLink = await ShareLink.findOne({ 
+            shareId, 
+            resourceType: "profile",
             isActive: true 
-        }).populate('createdBy', 'fullName email');
-
-        res.json({
-            message: 'Campaigns retrieved successfully',
-            campaigns
         });
-    } catch (error) {
-        res.status(500).json({
-            message: 'Error retrieving campaigns',
-            error: error.message
-        });
-    }
-});
 
-// Get NGO by ID
-router.get('/ngos/:id', async (req, res) => {
-    try {
-        const ngo = await User.findOne({ 
-            _id: req.params.id, 
-            role: 'ngo', 
-            isActive: true 
-        }).select('-password -__v');
+        if (!shareLink) {
+            return res.status(404).json({ message: "Shared profile not found or expired" });
+        }
 
-        if (!ngo) {
-            return res.status(404).json({
-                message: 'NGO not found'
+        // Check if it's an NGO or Company profile
+        const ngo = await NGO.findById(shareLink.resourceId).populate("userId", "fullName email");
+        if (ngo) {
+            // Update view count
+            shareLink.viewCount += 1;
+            shareLink.lastViewed = new Date();
+            await shareLink.save();
+
+            return res.json({
+                success: true,
+                data: {
+                    type: "ngo",
+                    profile: ngo,
+                    viewCount: shareLink.viewCount
+                }
             });
         }
 
-        res.json({
-            message: 'NGO retrieved successfully',
-            ngo
-        });
+        const company = await Company.findById(shareLink.resourceId).populate("userId", "fullName email");
+        if (company) {
+            // Update view count
+            shareLink.viewCount += 1;
+            shareLink.lastViewed = new Date();
+            await shareLink.save();
+
+            return res.json({
+                success: true,
+                data: {
+                    type: "company",
+                    profile: company,
+                    viewCount: shareLink.viewCount
+                }
+            });
+        }
+
+        return res.status(404).json({ message: "Profile not found" });
+
     } catch (error) {
-        res.status(500).json({
-            message: 'Error retrieving NGO',
-            error: error.message
-        });
+        res.status(500).json({ message: "Error accessing shared profile", error: error.message });
     }
 });
 
-// Get campaign by ID
-router.get('/campaigns/:id', async (req, res) => {
+// Access shared campaign
+router.get("/share/campaign/:shareId", async (req, res) => {
     try {
-        const campaign = await Campaign.findOne({ 
-            _id: req.params.id, 
+        const { shareId } = req.params;
+
+        const shareLink = await ShareLink.findOne({ 
+            shareId, 
+            resourceType: "campaign",
             isActive: true 
-        }).populate('createdBy', 'fullName email');
+        });
+
+        if (!shareLink) {
+            return res.status(404).json({ message: "Shared campaign not found or expired" });
+        }
+
+        const campaign = await Campaign.findById(shareLink.resourceId)
+            .populate("ngoId", "ngoName email");
 
         if (!campaign) {
-            return res.status(404).json({
-                message: 'Campaign not found'
-            });
+            return res.status(404).json({ message: "Campaign not found" });
         }
 
+        // Update view count
+        shareLink.viewCount += 1;
+        shareLink.lastViewed = new Date();
+        await shareLink.save();
+
         res.json({
-            message: 'Campaign retrieved successfully',
-            campaign
+            success: true,
+            data: {
+                campaign,
+                viewCount: shareLink.viewCount
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: "Error accessing shared campaign", error: error.message });
+    }
+});
+
+// Get platform statistics
+router.get("/stats", async (req, res) => {
+    try {
+        const [totalNGOs, totalCompanies, totalCampaigns] = await Promise.all([
+            NGO.countDocuments({ isActive: true }),
+            Company.countDocuments({ isActive: true }),
+            Campaign.countDocuments({ isActive: true })
+        ]);
+
+        res.json({
+            success: true,
+            stats: {
+                totalNGOs,
+                totalCompanies,
+                totalCampaigns
+            }
         });
     } catch (error) {
-        res.status(500).json({
-            message: 'Error retrieving campaign',
-            error: error.message
-        });
+        res.status(500).json({ message: "Error fetching stats", error: error.message });
     }
 });
 
