@@ -79,4 +79,30 @@ const globalErrorHandler = (err, req, res, next) => {
     }
 };
 
-module.exports = { AppError, globalErrorHandler };
+// Helper functions for consistent API responses
+const createSuccessResponse = (res, statusCode, data) => {
+    return res.status(statusCode).json({
+        status: 'success',
+        ...data
+    });
+};
+
+const createErrorResponse = (res, statusCode, message, details = null) => {
+    const response = {
+        status: 'fail',
+        message
+    };
+    
+    if (details && process.env.NODE_ENV === 'development') {
+        response.details = details;
+    }
+    
+    return res.status(statusCode).json(response);
+};
+
+module.exports = { 
+    AppError, 
+    globalErrorHandler, 
+    createSuccessResponse, 
+    createErrorResponse 
+};

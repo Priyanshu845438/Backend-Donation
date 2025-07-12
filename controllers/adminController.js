@@ -515,6 +515,230 @@ class AdminController {
         }
     }
 
+    // Edit user details
+    static async editUserDetails(req, res) {
+        try {
+            const { id } = req.params;
+            const { fullName, email, phoneNumber, role, isActive, approvalStatus } = req.body;
+
+            // Check if user exists
+            const user = await User.findById(id);
+            if (!user) {
+                return createErrorResponse(res, 404, "User not found");
+            }
+
+            // Check if email is already taken by another user
+            if (email && email !== user.email) {
+                const existingUser = await User.findOne({ email, _id: { $ne: id } });
+                if (existingUser) {
+                    return createErrorResponse(res, 400, "Email already exists");
+                }
+            }
+
+            // Update user details
+            const updateData = {};
+            if (fullName) updateData.fullName = fullName;
+            if (email) updateData.email = email;
+            if (phoneNumber) updateData.phoneNumber = phoneNumber;
+            if (role) updateData.role = role.toLowerCase();
+            if (typeof isActive === 'boolean') updateData.isActive = isActive;
+            if (approvalStatus) updateData.approvalStatus = approvalStatus;
+
+            const updatedUser = await User.findByIdAndUpdate(
+                id,
+                updateData,
+                { new: true }
+            ).select("-password");
+
+            // Log activity
+            await Activity.create({
+                userId: req.user.id,
+                action: "admin_edit_user",
+                description: `Admin edited user details: ${updatedUser.email}`,
+                metadata: { targetUserId: id, updatedFields: Object.keys(updateData) }
+            });
+
+            return createSuccessResponse(res, 200, {
+                message: "User details updated successfully",
+                user: updatedUser
+            });
+
+        } catch (error) {
+            console.error("Edit user details error:", error);
+            return createErrorResponse(res, 500, "Failed to update user details", error.message);
+        }
+    }
+
+    // Delete user and associated profiles
+    static async deleteUser(req, res) {
+        try {
+            const { id } = req.params;
+
+            // Check if user exists
+            const user = await User.findById(id);
+            if (!user) {
+                return createErrorResponse(res, 404, "User not found");
+            }
+
+            // Prevent admin from deleting themselves
+            if (user._id.toString() === req.user.id) {
+                return createErrorResponse(res, 400, "Cannot delete your own account");
+            }
+
+            // Delete associated profiles based on role
+            if (user.role === "ngo") {
+                await NGO.findOneAndDelete({ userId: id });
+            } else if (user.role === "company") {
+                await Company.findOneAndDelete({ userId: id });
+            }
+
+            // Delete associated campaigns if any
+            await Campaign.deleteMany({ 
+                $or: [
+                    { ngoId: id },
+                    { companyId: id }
+                ]
+            });
+
+            // Delete associated donations
+            await Donation.deleteMany({ donorId: id });
+
+            // Delete associated activities
+            await Activity.deleteMany({ userId: id });
+
+            // Delete the user
+            await User.findByIdAndDelete(id);
+
+            // Log activity
+            await Activity.create({
+                userId: req.user.id,
+                action: "admin_delete_user",
+                description: `Admin deleted user: ${user.email}`,
+                metadata: { deletedUserId: id, deletedUserRole: user.role }
+            });
+
+            return createSuccessResponse(res, 200, {
+                message: "User and associated data deleted successfully"
+            });
+
+        } catch (error) {
+            console.error("Delete user error:", error);
+            return createErrorResponse(res, 500, "Failed to delete user", error.message);
+        }
+    }
+
+    // View user profile with complete details
+    static async viewUserProfile(req, res) {
+        try {
+            const { id } = req.params;
+
+            // Get user details
+            const user = await User.findById(id).select("-password");
+            if (!user) {
+                return createErrorResponse(res, 404, "User not found");
+            }
+
+            let profileData = null;
+            let campaigns = [];
+
+            // Get role-specific profile data
+            if (user.role === "ngo") {
+                profileData = await NGO.findOne({ userId: id });
+                campaigns = await Campaign.find({ ngoId: id }).sort({ createdAt: -1 });
+            } else if (user.role === "company") {
+                profileData = await Company.findOne({ userId: id });
+                campaigns = await Campaign.find({ companyId: id }).sort({ createdAt: -1 });
+            }
+
+            // Get user's donations
+            const donations = await Donation.find({ donorId: id })
+                .populate("campaignId", "title targetAmount")
+                .sort({ createdAt: -1 });
+
+            // Get user's activities
+            const activities = await Activity.find({ userId: id })
+                .sort({ createdAt: -1 })
+                .limit(10);
+
+            // Calculate statistics
+            const stats = {
+                totalDonations: donations.length,
+                totalDonationAmount: donations.reduce((sum, donation) => sum + donation.amount, 0),
+                totalCampaigns: campaigns.length,
+                activeCampaigns: campaigns.filter(campaign => campaign.isActive).length
+            };
+
+            return createSuccessResponse(res, 200, {
+                message: "User profile retrieved successfully",
+                userProfile: {
+                    user,
+                    profile: profileData,
+                    campaigns,
+                    donations,
+                    activities,
+                    stats
+                }
+            });
+
+        } catch (error) {
+            console.error("View user profile error:", error);
+            return createErrorResponse(res, 500, "Failed to retrieve user profile", error.message);
+        }
+    }
+
+    // Edit user profile details (NGO/Company specific)
+    static async editUserProfile(req, res) {
+        try {
+            const { id } = req.params;
+            const profileData = req.body;
+
+            // Get user to determine role
+            const user = await User.findById(id);
+            if (!user) {
+                return createErrorResponse(res, 404, "User not found");
+            }
+
+            let updatedProfile = null;
+
+            if (user.role === "ngo") {
+                updatedProfile = await NGO.findOneAndUpdate(
+                    { userId: id },
+                    profileData,
+                    { new: true, runValidators: true }
+                );
+            } else if (user.role === "company") {
+                updatedProfile = await Company.findOneAndUpdate(
+                    { userId: id },
+                    profileData,
+                    { new: true, runValidators: true }
+                );
+            } else {
+                return createErrorResponse(res, 400, "User role does not have a profile to edit");
+            }
+
+            if (!updatedProfile) {
+                return createErrorResponse(res, 404, "Profile not found");
+            }
+
+            // Log activity
+            await Activity.create({
+                userId: req.user.id,
+                action: "admin_edit_user_profile",
+                description: `Admin edited ${user.role} profile: ${user.email}`,
+                metadata: { targetUserId: id, profileType: user.role }
+            });
+
+            return createSuccessResponse(res, 200, {
+                message: "User profile updated successfully",
+                profile: updatedProfile
+            });
+
+        } catch (error) {
+            console.error("Edit user profile error:", error);
+            return createErrorResponse(res, 500, "Failed to update user profile", error.message);
+        }
+    }
+
     // Add more methods for reports, campaign management, etc.
 }
 
