@@ -43,6 +43,7 @@ app.use("/api/company", require("./routes/company/index"));
 app.use("/api/public", require("./routes/public/index"));
 app.use("/api/campaigns", require("./routes/campaigns/index"));
 app.use("/api/donations", require("./routes/donations/index"));
+app.use("/api/user", require("./routes/user/index"));
 
 // 404 handler
 app.use('*', (req, res) => {

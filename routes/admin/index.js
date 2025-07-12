@@ -11,7 +11,17 @@ const bcrypt = require("bcryptjs");
 
 const AdminController = require("../../controllers/adminController");
 
+// Import notice routes
+const noticeRoutes = require("./notice");
+const reportsRoutes = require("./reports");
+
 const router = express.Router();
+
+// Use notice routes
+router.use("/notices", noticeRoutes);
+
+// Use reports routes
+router.use("/reports", reportsRoutes);
 
 // Dashboard analytics
 router.get("/dashboard", authMiddleware(["admin"]), async (req, res) => {
