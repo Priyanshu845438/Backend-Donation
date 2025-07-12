@@ -3,7 +3,13 @@ const mongoose = require("mongoose");
 
 const connectDB = async (retries = 5) => {
     try {
-        const conn = await mongoose.connect(process.env.MONGO_URI, {
+        const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/donation_platform';
+        
+        if (!process.env.MONGO_URI) {
+            console.log('⚠️ MONGO_URI not found in environment variables, using default local MongoDB');
+        }
+        
+        const conn = await mongoose.connect(mongoUri, {
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
             maxPoolSize: 10,

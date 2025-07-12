@@ -1,39 +1,24 @@
-
+// CORS configuration
 const corsOptions = {
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        
+    origin: (origin, callback) => {
         const allowedOrigins = [
-            process.env.FRONTEND_URL || "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:3002"
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'http://192.168.56.1:5173',
+            'http://10.200.168.97:5173',
         ];
 
-        if (process.env.NODE_ENV === 'production') {
-            // Only allow production frontend URL in production
-            if (allowedOrigins.includes(origin)) {
-                return callback(null, true);
-            }
-            return callback(new Error('Not allowed by CORS'));
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
         } else {
-            // Allow all localhost origins in development
-            if (origin.includes('localhost') || allowedOrigins.includes(origin)) {
-                return callback(null, true);
-            }
-            return callback(new Error('Not allowed by CORS'));
+            console.warn(`❌ Blocked by CORS: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: [
-        "Content-Type", 
-        "Authorization", 
-        "X-Requested-With",
-        "Accept",
-        "Origin"
-    ],
-    exposedHeaders: ["X-Total-Count"],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['X-Total-Count'],
     maxAge: 86400 // 24 hours
 };
 

@@ -111,7 +111,21 @@ router.post("/register", async (req, res) => {
                 ngoName: fullName,
                 email: email,
                 contactNumber: phoneNumber,
-                authorizedPerson: { email: email }
+                authorizedPerson: { 
+                    name: "Not provided",
+                    phone: "Not provided",
+                    email: email // Use actual email instead of null
+                },
+                panNumber: "",
+                tanNumber: "",
+                gstNumber: "",
+                bankDetails: {
+                    accountHolderName: "Not provided",
+                    accountNumber: "",
+                    ifscCode: "Not provided",
+                    bankName: "Not provided",
+                    branchName: "Not provided"
+                }
             });
         }
 
@@ -295,7 +309,21 @@ router.post("/signup", async (req, res) => {
                 ngoName: fullName,
                 email: email,
                 contactNumber: phoneNumber,
-                authorizedPerson: { email: email }
+                authorizedPerson: { 
+                    name: "Not provided",
+                    phone: "Not provided",
+                    email: email // Use actual email instead of null
+                },
+                panNumber: "",
+                tanNumber: "",
+                gstNumber: "",
+                bankDetails: {
+                    accountHolderName: "Not provided",
+                    accountNumber: "",
+                    ifscCode: "Not provided",
+                    bankName: "Not provided",
+                    branchName: "Not provided"
+                }
             });
         }
 

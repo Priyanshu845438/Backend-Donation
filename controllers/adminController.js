@@ -1,7 +1,6 @@
-
 const User = require("../models/User");
-const Company = require("../models/Company");
 const NGO = require("../models/NGO");
+const Company = require("../models/Company");
 const Campaign = require("../models/Campaign");
 const Donation = require("../models/Donation");
 const Activity = require("../models/Activity");
@@ -169,7 +168,7 @@ class AdminController {
     // User Management
     static async createUser(req, res) {
         try {
-            const { fullName, email, password, phoneNumber, role } = req.body;
+            const { fullName, email, password, phoneNumber, role, approvalStatus } = req.body;
 
             if (!fullName || !email || !password || !phoneNumber || !role) {
                 return createErrorResponse(res, 400, "All fields are required");
@@ -187,34 +186,23 @@ class AdminController {
                 email,
                 password: hashedPassword,
                 phoneNumber,
-                role: role.charAt(0).toUpperCase() + role.slice(1).toLowerCase(),
+                role: role.toLowerCase(),
                 isVerified: true,
                 isActive: true,
-                approvalStatus: "approved"
+                approvalStatus: approvalStatus || "approved"
             });
 
             await newUser.save();
 
             // Create role-specific profile
-            const normalizedRole = role.toLowerCase();
-            if (normalizedRole === "ngo") {
-                await NGO.create({
-                    userId: newUser._id,
-                    ngoName: fullName,
-                    email,
-                    contactNumber: phoneNumber,
-                    isActive: true
-                });
-            } else if (normalizedRole === "company") {
-                await Company.create({
-                    userId: newUser._id,
-                    companyName: fullName,
-                    companyEmail: email,
-                    companyPhoneNumber: phoneNumber,
-                    isActive: true
-                });
+            let profileData = null;
+            if (role.toLowerCase() === "ngo") {
+                profileData = await this.createNGOProfile(newUser, { fullName, email, phoneNumber });
+            } else if (role.toLowerCase() === "company") {
+                profileData = await this.createCompanyProfile(newUser, { fullName, email, phoneNumber });
             }
 
+            // Log activity
             await Activity.create({
                 userId: req.user.id,
                 action: "admin_create_user",
@@ -229,7 +217,8 @@ class AdminController {
                     fullName: newUser.fullName,
                     email: newUser.email,
                     role: newUser.role
-                }
+                },
+                profile: profileData
             });
 
         } catch (error) {
@@ -241,7 +230,7 @@ class AdminController {
     static async getAllUsers(req, res) {
         try {
             const { page = 1, limit = 10, role, status, search } = req.query;
-            
+
             const filter = {};
             if (role) filter.role = role;
             if (status) filter.approvalStatus = status;
@@ -412,7 +401,7 @@ class AdminController {
     static async getSettings(req, res) {
         try {
             const settings = await Settings.find().sort({ category: 1 });
-            
+
             return createSuccessResponse(res, 200, {
                 message: "Settings retrieved successfully",
                 settings
@@ -490,6 +479,40 @@ class AdminController {
     static async sendNoticeToUsers(notice) {
         // Implementation for sending notices to users
         // This would handle both in-app and email notifications
+    }
+
+    static async createNGOProfile(user, details) {
+        try {
+            const { fullName, email, phoneNumber } = details;
+            const ngo = await NGO.create({
+                userId: user._id,
+                ngoName: fullName,
+                email,
+                contactNumber: phoneNumber,
+                isActive: true
+            });
+            return ngo;
+        } catch (error) {
+            console.error("Create NGO profile error:", error);
+            throw error;
+        }
+    }
+
+    static async createCompanyProfile(user, details) {
+        try {
+            const { fullName, email, phoneNumber } = details;
+            const company = await Company.create({
+                userId: user._id,
+                companyName: fullName,
+                companyEmail: email,
+                companyPhoneNumber: phoneNumber,
+                isActive: true
+            });
+            return company;
+        } catch (error) {
+            console.error("Create Company profile error:", error);
+            throw error;
+        }
     }
 
     // Add more methods for reports, campaign management, etc.

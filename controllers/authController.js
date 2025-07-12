@@ -252,12 +252,28 @@ class AuthController {
     // Create NGO profile
     static async createNGOProfile(user, userData) {
         try {
-            const newNGO = await ngo.create({
+            const newNGO = await NGO.create({
                 userId: user._id,
                 ngoName: userData.fullName,
                 email: userData.email,
                 contactNumber: userData.phoneNumber,
-                isActive: true
+                isActive: true,
+                // Ensure sparse unique fields are not set to undefined
+                panNumber: null,
+                tanNumber: null,
+                gstNumber: null,
+                authorizedPerson: {
+                    name: null,
+                    phone: null,
+                    email: null
+                },
+                bankDetails: {
+                    accountHolderName: null,
+                    accountNumber: null,
+                    ifscCode: null,
+                    bankName: null,
+                    branchName: null
+                }
             });
             return newNGO;
         } catch (error) {
@@ -269,7 +285,7 @@ class AuthController {
     // Create Company profile
     static async createCompanyProfile(user, userData) {
         try {
-            const newCompany = await company.create({
+            const newCompany = await Company.create({
                 userId: user._id,
                 companyName: userData.fullName,
                 companyEmail: userData.email,
