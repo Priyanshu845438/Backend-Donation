@@ -72,8 +72,84 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "approvalStatus": "Approved"
+  "status": "approved"
 }
+```
+
+### 8. Edit User Details
+```http
+PUT /api/admin/users/:id/details
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "fullName": "Updated Name",
+  "email": "newemail@example.com",
+  "phoneNumber": "+1234567890",
+  "role": "ngo",
+  "isActive": true,
+  "approvalStatus": "approved"
+}
+```
+
+### 9. Delete User Completely
+```http
+DELETE /api/admin/users/:id/complete
+Authorization: Bearer <admin_token>
+```
+
+**Note:** This deletes the user and all associated data (profile, campaigns, donations, activities).
+
+### 10. View User Profile
+```http
+GET /api/admin/users/:id/profile
+Authorization: Bearer <admin_token>
+```
+
+**Response includes:**
+- User details
+- Role-specific profile (NGO/Company)
+- User's campaigns
+- User's donations
+- Recent activities
+- Statistics
+
+### 11. Edit User Profile
+```http
+PUT /api/admin/users/:id/profile
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+```
+
+**For NGO Profile:**
+```json
+{
+  "ngoName": "Updated NGO Name",
+  "registrationNumber": "REG123456",
+  "address": "Updated Address",
+  "contactNumber": "+1234567890",
+  "website": "https://updatedngo.org"
+}
+```
+
+**For Company Profile:**
+```json
+{
+  "companyName": "Updated Company Name",
+  "registrationNumber": "COMP123456",
+  "companyAddress": "Updated Address",
+  "companyPhoneNumber": "+1234567890",
+  "ceoName": "CEO Name"
+}
+```
+
+### 12. Toggle User Status
+```http
+PUT /api/admin/users/:id/toggle-status
+Authorization: Bearer <admin_token>
 ```
 
 ## 🏢 Organization Management
