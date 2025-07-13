@@ -14,6 +14,9 @@ const app = express();
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Allow all OPTIONS preflight
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Request logging middleware
 app.use((req, res, next) => {
     console.log(`Request from ${req.headers.origin} → ${req.method} ${req.originalUrl}`);

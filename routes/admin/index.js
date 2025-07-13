@@ -1,3 +1,4 @@
+
 const express = require("express");
 const User = require("../../models/User");
 const ngo = require("../../models/NGO");
@@ -10,6 +11,8 @@ const authMiddleware = require("../../middleware/auth");
 const bcrypt = require("bcryptjs");
 
 const AdminController = require("../../controllers/adminController");
+const profileRoutes = require("./profile");
+const campaignRoutes = require("./campaigns");
 
 // Import notice routes
 const noticeRoutes = require("./notice");
@@ -463,32 +466,23 @@ router.get("/notices", authMiddleware(["admin"]), async (req, res) => {
 });
 
 // Settings management
-router.get("/settings", authMiddleware(["admin"]), async (req, res) => {
-    try {
-        const settings = await Settings.findOne();
-        res.json(settings || {});
-    } catch (error) {
-        res.status(500).json({
-            message: "Error fetching settings",
-            error: error.message,
-        });
-    }
-});
+router.get("/settings", authMiddleware(["admin"]), AdminController.getAllSettings);
+router.get("/settings/:category", authMiddleware(["admin"]), AdminController.getSettingsByCategory);
+router.put("/settings", authMiddleware(["admin"]), AdminController.updateSettings);
+router.put("/settings/bulk", authMiddleware(["admin"]), AdminController.updateMultipleSettings);
+router.put("/settings/:category/reset", authMiddleware(["admin"]), AdminController.resetSettings);
 
-router.put("/settings", authMiddleware(["admin"]), async (req, res) => {
-    try {
-        const settings = await Settings.findOneAndUpdate({}, req.body, {
-            new: true,
-            upsert: true,
-        });
-        res.json({ message: "Settings updated successfully", settings });
-    } catch (error) {
-        res.status(500).json({
-            message: "Error updating settings",
-            error: error.message,
-        });
-    }
-});
+// Rate limiting configuration
+router.put("/settings/rate-limiting", authMiddleware(["admin"]), AdminController.updateRateLimiting);
+
+// Environment configuration
+router.put("/settings/environment", authMiddleware(["admin"]), AdminController.updateEnvironmentConfig);
+
+// Password management
+router.put("/users/:userId/password", authMiddleware(["admin"]), AdminController.changeUserPassword);
+
+// System information
+router.get("/system/info", authMiddleware(["admin"]), AdminController.getSystemInfo);
 
 // Missing ngo routes for test compatibility
 router.get("/ngos/", authMiddleware(["admin"]), async (req, res) => {
@@ -1613,4 +1607,9 @@ router.delete("/users/:id/complete", authMiddleware(["admin"]), AdminController.
 
 router.get("/users/:id", authMiddleware(["admin"]), AdminController.viewUserProfile);
 
+// Include upload routes
+router.use("/", profileRoutes);
+router.use("/campaigns", campaignRoutes);
+
+// Export router
 module.exports = router;

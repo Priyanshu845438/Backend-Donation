@@ -209,7 +209,7 @@ class AuthController {
 
             // Handle file upload
             if (req.file) {
-                updateData.profileImage = `/uploads/profile/${req.file.filename}`;
+                updateData.profileImage = `/uploads/Profile/${req.file.filename}`;
             }
 
             let updatedProfile = null;
@@ -472,4 +472,4 @@ const setupAdmin = async (req, res) => {
 };
 
 module.exports = AuthController;
-module.exports.setupAdmin = setupAdmin;
+module.exports.setupAdmin = setupAdmin; 
