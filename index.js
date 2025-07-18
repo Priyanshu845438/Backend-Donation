@@ -43,9 +43,10 @@ app.use("/api/auth", require("./routes/auth/index"));
 app.use("/api/admin", require("./routes/admin/index"));
 app.use("/api/ngo", require("./routes/ngo/index"));
 app.use("/api/company", require("./routes/company/index"));
-app.use("/api/public", require("./routes/public/index"));
-app.use("/api/campaigns", require("./routes/campaigns/index"));
 app.use("/api/donations", require("./routes/donations/index"));
+app.use("/api/campaigns", require("./routes/campaigns/index"));
+app.use("/api/payment", require("./routes/payment/index"));
+app.use("/api/public", require("./routes/public/index"));
 app.use("/api/user", require("./routes/user/index"));
 
 // 404 handler

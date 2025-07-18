@@ -221,4 +221,13 @@ router.get("/stats", async (req, res) => {
     }
 });
 
+// Get single campaign by ID
+//router.get("/campaigns/:id", PublicController.getCampaign);
+
+// Get campaign by share link
+//router.get("/share/:shareLink", PublicController.getCampaignByShareLink);
+
+// Get campaign files (public)
+//router.get("/campaigns/:id/files", PublicController.getCampaignFiles);
+
 module.exports = router;

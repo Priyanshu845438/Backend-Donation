@@ -5,38 +5,30 @@ const { campaignImageUpload, campaignDocumentUpload, campaignProofUpload } = req
 
 const router = express.Router();
 
-// Admin upload campaign images
-router.post("/:campaignId/upload-images", 
-    authMiddleware(["admin"]),
-    //upload.array("campaignImages", 5),
-    campaignImageUpload.array("campaignImages", 10),
-    AdminController.uploadCampaignImages
-);
-
-// Admin upload campaign documents
-router.post("/:campaignId/upload-documents", 
-    authMiddleware(["admin"]),
-    //upload.array("documents", 5), 
-    campaignDocumentUpload.array("documents", 10),
-    AdminController.uploadCampaignDocuments
-);
-
-// Admin upload campaign proof documents
-router.post("/:campaignId/upload-proof", 
-    authMiddleware(["admin"]),
-    //upload.array("campaignProof", 3),
-    campaignProofUpload.array("proofDocs", 10),
-    AdminController.uploadCampaignProof
-);
-
+// Campaign Management Routes
+router.get("/", authMiddleware(["admin"]), AdminController.getAllCampaigns);
+router.get("/:id", authMiddleware(["admin"]), AdminController.getCampaignDetails);
+router.put("/:id", authMiddleware(["admin"]), AdminController.updateCampaign);
 // Delete campaign
 router.delete("/:id", authMiddleware(["admin"]), AdminController.deleteCampaign);
 
-// Campaign file uploads
+// Get campaign files
+router.get("/:campaignId/files", authMiddleware(["admin"]), AdminController.getCampaignFiles);
+
+// Get campaign images
+router.get("/:campaignId/images", authMiddleware(["admin"]), AdminController.getCampaignImages);
+
+// Get campaign documents
+router.get("/:campaignId/documents", authMiddleware(["admin"]), AdminController.getCampaignDocuments);
+
+// Get campaign proof
+router.get("/:campaignId/proof", authMiddleware(["admin"]), AdminController.getCampaignProof);
+
+// Campaign File Upload Routes
 router.post(
     "/:campaignId/images",
     authMiddleware(["admin"]),
-    campaignImageUpload.array("campaignImages", 10),
+    campaignImageUpload.array("image", 10),
     AdminController.uploadCampaignImages
 );
 
@@ -50,7 +42,7 @@ router.post(
 router.post(
     "/:campaignId/proof",
     authMiddleware(["admin"]),
-    campaignProofUpload.array("proofDocs", 10),
+    campaignProofUpload.array("proof", 10),
     AdminController.uploadCampaignProof
 );
 
